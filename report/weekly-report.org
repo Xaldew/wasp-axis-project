@@ -1,0 +1,125 @@
+#+TITLE: Axis Camera Calibration Project
+#+AUTHOR: Gustaf Waldemarson
+#+OPTIONS:
+#+LATEX_HEADER: \usepackage{commath}
+#+LATEX_HEADER: \usepackage{mathtools}
+
+#+LATEX: \pagebreak
+
+* 2019-09-11
+
+** Algorithm Input
+
+   - A fully connected graph describing the distances from one camera to every
+     other camera i.e., for $N$ cameras, it contains $\frac{N(N-1)}{2}$ distance
+     measurements, an enumeration of the cameras. See example figure.
+   - $N$ input images. One from each camera, in the same order as enumerated by
+     the graph.
+
+     #+ATTR_LATEX: :width 100px
+     #+CAPTION: Example of the camera graph.
+     [[./camera_graph.pdf]]
+   
+** Algorithm Output
+
+   - $N$ camera calibration matrices.
+   - Structure from Motion (SfM) 3D model using the calibration data and images.
+   - Optional calibration state, if algorithm is able to refine over multiple
+     frames.
+     
+** Qualitative Comparison
+
+   - Compare output SfM model with a model generated from previously calibrated
+     cameras.
+
+** Optional Questions and/or Research Topics
+
+   - "Camera distance" is a bit ambiguous. Does this refer to the distances
+     between cameras on a 2D map? Or the Euclidean distance? If on a map, could
+     the height of the cameras be a required input parameter?
+
+   - Restrict allowed rotations such as camera roll (might make it easier to
+     estimate a global solution).
+
+   - Is the objects observed by the cameras well defined?
+
+   - Does this project only care about the pin-hole-camera, and should we
+     therefore ignore distortion parameters?
+
+   - Assuming that the same camera is used for all cameras in the system, some
+     intrinsic parameters could probably be fixed, simplifying the optimization.
+   
+** Preliminary Draft of Algorithm
+
+   - Perform feature detection in all images, (e.g, [[https://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_feature2d/py_orb/py_orb.html][ORB]] features, as these are
+     not patent encumbered).
+
+   - For each pair of images that have intersecting view-frusta (if known):
+
+     - Perform [[https://docs.opencv.org/trunk/dc/dc3/tutorial_py_matcher.html][feature-matching]] to find pairs of image-points that /might/
+       correspond to the same 3D point.
+
+     - Use RANSAC to remove outliers:
+
+       - From the matched points, select randomly select 8 of them and estimate
+         the [[https://en.wikipedia.org/wiki/Eight-point_algorithm][Essential matrix]] from these using the eight-point
+         algorithm. (Alternatively, select 5 and use the five-point algorithm).
+
+       - Count matches for the computed matrix.
+
+       - Iterate $n$ times, keeping track of the matrix with the most matches.
+
+       - Remove any point that does not match the final matrix. They are
+         presumably outliers.
+
+   - Perform [[https://en.wikipedia.org/wiki/Bundle_adjustment][bundle adjustment]], i.e., using previously found pair-wise feature
+     matches, setup a non-linear optimization problem as follows:
+
+     - Setup equations for each point projection, i.e. for some 3D point
+       $X_{0}$, the image coordinates for two cameras (e.g., $c_{0}$ and
+       $c_{1}$) are:
+       \begin{align*}
+         x_{\text{c}_{0}} = C_{0} X_{0} = K_{0} [R_{0} | t_{0}] \\
+         x_{\text{c}_{1}} = C_{1} X_{0} = K_{1} [R_{1} | t_{1}]
+       \end{align*}
+       Repeat this for all matches and cameras.
+     - Note that one camera can use the identity rotation and null-translation
+       which moves all cameras and 3D points into that frame. E.g., using this
+       for the first camera adds the constraint:
+       \begin{align*}
+         R_{0} = I \\
+         t_{0} = 0
+       \end{align*}
+     - Add all camera distance constraints from the input camera distance graph:
+       \begin{align*}
+         |t_{0}| &= e_{0} \\
+         & \vdots \\
+         |t_{n}| &= e_{n}
+       \end{align*}
+     - Numerically solve the above system using e.g. [[http://ceres-solver.org/][Ceres]], ideally retrieving
+       the intrinsic camera parameters for all cameras and a set of 3D points
+       that could be plotted as a point-cloud.
+
+
+* 2019-09-12
+
+  - Mocked up the algorithm input/output described in the last report:
+
+    - Can now read an XML/YML/JSON file containing the camera graph and input
+      images (format depends on user input).
+
+    - Can output the generated point cloud in OBJ/PLY/XYZ formats.
+
+    - Camera matrices is output in either XML/YML/JSON depending on user input.
+
+    - The only missing part is the actual main calibration algorithm.
+  
+  - As we're currently lacking cameras, I took a slightly different route to get
+    some data to work on:
+
+    - Using a ray tracer from my line of research, I generated 4 images from the
+      same scene, but with different orientations. This gives me a set of
+      perfect pin-hole camera images and accurate distances between all cameras.
+
+      In theory, this could also be used as a qualitative measurement.
+
