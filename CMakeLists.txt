@@ -41,3 +41,4 @@ link_libraries(
   ${OpenCV_LIBRARIES}
   ${Boost_LIBRARIES}
   ${CERES_LIBRARIES})
+add_subdirectory(src)
