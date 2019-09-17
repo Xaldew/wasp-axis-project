@@ -240,6 +240,11 @@ calibrate_cameras(const CameraGraph &G, const std::vector<cv::Mat> &images)
     {
         detector->detect(images[i], keypoints[i]);
         detector->compute(images[i], keypoints[i], desc[i]);
+
+        // cv::Mat out;
+        // cv::drawKeypoints(images[i], keypoints[i], out);
+        // cv::imshow("DebugWindow", out);
+        // cv::waitKey(0);
     }
 
     // Search for matches in each pair of images.
