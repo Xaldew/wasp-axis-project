@@ -308,51 +308,53 @@ calibrate_cameras(const CameraGraph &G, const std::vector<cv::Mat> &images)
         }
     }
 
-    size_t cloud_sz = 0;
-    for (auto &m : matches) { cloud_sz += m.size(); }
+    // TODO: Ceres.
 
-    // Note: The matches are arguably too poor to work well in this example.
+    // size_t cloud_sz = 0;
+    // for (auto &m : matches) { cloud_sz += m.size(); }
 
-    // Use Ceres to estimate the bundle adjustment for all correspondences.
-    struct Camera
-    {
-        double p[7];
-    };
-    struct Point
-    {
-        double p[3];
-    };
-    using namespace std;
+    // // Note: The matches are arguably too poor to work well in this example.
 
-    std::vector<Camera> cameras(N);
-    std::vector<Point> sfm(cloud_sz);
-    ceres::Problem problem;
-    size_t pidx = 0;
-    for (size_t i = 0, cnt = 0; i < N; ++i)
-    {
-        for (size_t j = i + 1; j < N; ++j, ++cnt)
-        {
-            for (auto &m : matches[cnt])
-            {
-                cv::Point2d im0 = keypoints[i][m.queryIdx].pt;
-                cv::Point2d im1 = keypoints[j][m.trainIdx].pt;
-                cout << im0 << " " << im1 << endl;
-                ceres::CostFunction *cf = Residual::Create(im0, im1);
-                problem.AddResidualBlock(cf, nullptr,
-                                         cameras[i].p,
-                                         cameras[j].p,
-                                         sfm[pidx++].p);
-            }
-        }
-    }
+    // // Use Ceres to estimate the bundle adjustment for all correspondences.
+    // struct Camera
+    // {
+    //     double p[7];
+    // };
+    // struct Point
+    // {
+    //     double p[3];
+    // };
+    // using namespace std;
 
-    ceres::Solver::Options opts;
-    opts.linear_solver_type = ceres::DENSE_SCHUR;
-    opts.minimizer_progress_to_stdout = true;
-    ceres::Solver::Summary summary;
-    ceres::Solve(opts, &problem, &summary);
+    // std::vector<Camera> cameras(N);
+    // std::vector<Point> sfm(cloud_sz);
+    // ceres::Problem problem;
+    // size_t pidx = 0;
+    // for (size_t i = 0, cnt = 0; i < N; ++i)
+    // {
+    //     for (size_t j = i + 1; j < N; ++j, ++cnt)
+    //     {
+    //         for (auto &m : matches[cnt])
+    //         {
+    //             cv::Point2d im0 = keypoints[i][m.queryIdx].pt;
+    //             cv::Point2d im1 = keypoints[j][m.trainIdx].pt;
+    //             cout << im0 << " " << im1 << endl;
+    //             ceres::CostFunction *cf = Residual::Create(im0, im1);
+    //             problem.AddResidualBlock(cf, nullptr,
+    //                                      cameras[i].p,
+    //                                      cameras[j].p,
+    //                                      sfm[pidx++].p);
+    //         }
+    //     }
+    // }
 
-    std::cout << summary.FullReport() << std::endl;
+    // ceres::Solver::Options opts;
+    // opts.linear_solver_type = ceres::DENSE_SCHUR;
+    // opts.minimizer_progress_to_stdout = true;
+    // ceres::Solver::Summary summary;
+    // ceres::Solve(opts, &problem, &summary);
+
+    // std::cout << summary.FullReport() << std::endl;
 
     return {};
 }
