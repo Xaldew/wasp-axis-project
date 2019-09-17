@@ -243,13 +243,25 @@ calibrate_cameras(const CameraGraph &G, const std::vector<cv::Mat> &images)
     }
 
     // Search for matches in each pair of images.
+    // Note: Crosscheck is intended as an alternative to the ratio test.
     std::vector<std::vector<cv::DMatch>> matches(W);
-    cv::BFMatcher matcher(cv::NORM_HAMMING, true);
+    cv::BFMatcher matcher(cv::NORM_HAMMING);
     for (size_t i = 0, cnt = 0; i < N; ++i)
     {
         for (size_t j = i + 1; j < N; ++j, ++cnt)
         {
-            matcher.match(desc[i], desc[j], matches[cnt]);
+            std::vector<std::vector<cv::DMatch>> knn_matches;
+            matcher.knnMatch(desc[i], desc[j], knn_matches, 2);
+
+            // Filter matches using Lowe's ratio test.
+            const float nn_ration = 0.85;
+            for (size_t k = 0; k < knn_matches.size(); k++)
+            {
+                if (knn_matches[k][0].distance < nn_ration * knn_matches[k][1].distance)
+                {
+                    matches[cnt].push_back(knn_matches[k][0]);
+                }
+            }
 
             // Extract indices to the keypoints.
             std::vector<int> id0;
