@@ -62,8 +62,7 @@
      - Use RANSAC to remove outliers:
 
        - From the matched points, select randomly select 8 of them and estimate
-         the [[https://en.wikipedia.org/wiki/Eight-point_algorithm][Essential matrix]] from these using the eight-point
-         algorithm. (Alternatively, select 5 and use the five-point algorithm).
+         the [[https://en.wikipedia.org/wiki/Eight-point_algorithm][Fundamental matrix]] from these using the eight-point algorithm.
 
        - Count matches for the computed matrix.
 
