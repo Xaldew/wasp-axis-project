@@ -8,7 +8,7 @@ perform feature matching and subsequent bundle adjustment.
 
 ## Current Example Scenes
 
-The "YeahRight" sculpture, courtesy of Keanan Crane.
+The "YeahRight" sculpture, courtesy of Keenan Crane.
 [YeahRight](img/yeahright.gif)
 
 A simple Rubiks' cube model.
