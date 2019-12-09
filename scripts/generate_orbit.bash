@@ -3,8 +3,8 @@
 root=$(git rev-parse --show-toplevel)
 raytracer=${1:?"Path to RayTracer repo not given."}
 scene=${2:?"No scene given."}
-fmt=${3:-"${root}/data/$(basename ${scene} .pbrt)/cam-%03d"}
-steps=${4:-5}
+steps=${3:-3}
+fmt=${4:-"${root}/data/$(basename ${scene} .pbrt)/cam-%03d"}
 
 dir=$(dirname ${fmt})
 mkdir -p ${dir}
