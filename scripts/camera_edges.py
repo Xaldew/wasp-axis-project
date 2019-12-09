@@ -21,12 +21,14 @@ def main(args):
     for i, (k, v) in enumerate(sorted(cameras.items())):
         C[i] = v
         img = "cam-%03d.jpg" % i
-        vertices.append({"index": i, "image": img, "scene": k})
+        vertices.append({"index": i, "image": img, "scene": k, "location": v})
 
     cnt = 0
     edges = list()
-    for i in range(4):
-        for j in range(i + 1, 4):
+    for i in range(len(C)):
+        for j in range(len(C)):
+            if i == j:
+                continue
             ec = np.array(C[j]) - np.array(C[i])
             dc = np.linalg.norm(ec)
             # print("e{0} = c{1} - c{2} = {3}, |e{0}| = {4:.1f}".format(cnt, j, i, ec, dc))
