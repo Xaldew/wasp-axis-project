@@ -142,10 +142,14 @@ output_camera_calibration(const cv::String &path,
                           const std::vector<cv::Vec3f> &poses);
 
 
+bool g_verbose = false;
+
+
 int main(int argc, char *argv[])
 {
     const cv::String help_text =
         "{ help h usage ? |        | Print this message. }"
+        "{ verbose v      |        | Sets program verbosity level. }"
         "{ @camera_graph  | <none> | Path to camera configuration graph. }"
         "{ @camera_output | <none> | Path for camera calibgration output. }"
         "{ @sfm_output    | <none> | Path for 3D point cloud output. }";
@@ -166,6 +170,10 @@ int main(int argc, char *argv[])
     {
         parser.printMessage();
         return EXIT_SUCCESS;
+    }
+    if (parser.has("verbose"))
+    {
+        g_verbose = true;
     }
 
     std::vector<cv::Mat> images;
@@ -290,12 +298,15 @@ calibrate_cameras(const std::vector<cv::Mat> &images,
                   const CameraGraph &G)
 {
     // DEBUG: Print graph.
-    for (auto &p : G)
+    if (g_verbose)
     {
-        std::cout << p.first.first << " " << p.first.second << " " << p.second << "\n";
+        for (auto &p : G)
+        {
+            std::cout << p.first.first << " " << p.first.second << " " << p.second << "\n";
+        }
+        // DEBUG: Display images.
+        cv::namedWindow("DebugWindow", cv::WINDOW_AUTOSIZE);
     }
-    // DEBUG: Display images.
-    cv::namedWindow("DebugWindow", cv::WINDOW_AUTOSIZE);
 
     // Detect features in all images.
     cv::Ptr<cv::ORB> detector = cv::ORB::create();
@@ -308,11 +319,6 @@ calibrate_cameras(const std::vector<cv::Mat> &images,
     {
         detector->detect(images[i], keypoints[i]);
         detector->compute(images[i], keypoints[i], desc[i]);
-
-        // cv::Mat out;
-        // cv::drawKeypoints(images[i], keypoints[i], out);
-        // cv::imshow("DebugWindow", out);
-        // cv::waitKey(0);
     }
 
     // Search for matches in each pair of images.
@@ -368,14 +374,17 @@ calibrate_cameras(const std::vector<cv::Mat> &images,
             }
 
             // Display the filtered matches.
-            // cv::Mat out;
-            // cv::drawMatches(images[i], keypoints[i], images[j], keypoints[j],
-            //                 rmatch, out,
-            //                 cv::Scalar::all(-1), cv::Scalar::all(-1),
-            //                 std::vector<char>(),
-            //                 cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
-            // cv::imshow("DebugWindow", out);
-            // cv::waitKey(0);
+            if (g_verbose)
+            {
+                cv::Mat out;
+                cv::drawMatches(images[i], keypoints[i], images[j], keypoints[j],
+                                rmatch, out,
+                                cv::Scalar::all(-1), cv::Scalar::all(-1),
+                                std::vector<char>(),
+                                cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
+                cv::imshow("DebugWindow", out);
+                cv::waitKey(0);
+            }
 
             // Replace matches[cnt] with our filtered matches.
             matches[cnt] = rmatch;
@@ -406,47 +415,16 @@ calibrate_cameras(const std::vector<cv::Mat> &images,
     ceres::Solver::Options opts;
     opts.linear_solver_type = ceres::DENSE_SCHUR;
     opts.minimizer_progress_to_stdout = true;
+    opts.max_num_iterations = 250;
     ceres::Solver::Summary summary;
     ceres::Solve(opts, &problem, &summary);
-
     std::cout << summary.FullReport() << std::endl;
 
     return extract_sfm(cameras, tracks);
 }
 
 
-
-struct Edge
-{
-    bool operator==(const Edge &rhs) const
-    {
-        return std::make_tuple(src_img, dst_img, kp) ==
-            std::make_tuple(rhs.src_img, rhs.dst_img, rhs.kp);
-    }
-
-    struct Hash
-    {
-        size_t operator()(const Edge &e) const
-        {
-            return e.src_img ^ e.dst_img ^ e.kp;
-        }
-    };
-
-    size_t src_img; /**< Edge source image. */
-    size_t dst_img; /**< Edge destination image. */
-    size_t kp;      /**< Keypoint index. */
-};
-
-struct Vertex
-{
-    size_t img; /**< Source image. */
-    size_t kp;  /**< Keypoint index. */
-};
-
-// using ImageGraph = std::unordered_map<Edge, Vertex, Edge::Hash>;
 using ImageGraph = std::unordered_map<size_t, std::vector<size_t>>;
-
-
 ImageGraph filter_graph(const ImageGraph &G);
 
 std::ostream &write_dotfile(std::ostream &os,
@@ -474,6 +452,7 @@ std::ostream &write_dotfile(std::ostream &os,
         std::sort(v.begin(), v.end());
         for (const auto &ki : v)
         {
+            // Don't print vertices without edges and no edges point towards it.
             if (cnt[ki] > 0 || !G.at(ki).empty())
             {
                 const auto &k = kps[ki];
@@ -667,9 +646,6 @@ find_camera_tracks(
     cv::imwrite("filtered_image_graph.jpg", fig);
 
     // TODO: More and/or better filtering is possible.
-
-    // cv::imshow("DebugWindow", fig);
-    // cv::waitKey(0);
 
     // Extract 'tracks' from the camera graphs. I.e., any cycles found in the
     // graph.
