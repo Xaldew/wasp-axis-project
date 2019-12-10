@@ -121,17 +121,25 @@ find_camera_tracks(
     const std::vector<std::vector<cv::DMatch>> &matches);
 
 std::tuple<std::vector<double>,
-           std::vector<cv::Matx13f>,
-           std::vector<cv::Matx13f>,
-           std::vector<cv::Matx13f>>
+           std::vector<cv::Vec3f>,
+           std::vector<cv::Vec3f>,
+           std::vector<cv::Vec3b>>
 calibrate_cameras(const std::vector<cv::Mat>&,
                   const std::vector<cv::Point3d>&,
                   const CameraGraph &);
 
+std::tuple<std::vector<double>,
+           std::vector<cv::Vec3f>,
+           std::vector<cv::Vec3f>,
+           std::vector<cv::Vec3b>>
+extract_sfm(const std::vector<std::shared_ptr<Camera>> &cameras,
+            const std::vector<Track> &tracks);
+
+
 bool
 output_camera_calibration(const cv::String &path,
                           const std::vector<double> &focals,
-                          const std::vector<cv::Matx13f> &poses);
+                          const std::vector<cv::Vec3f> &poses);
 
 
 int main(int argc, char *argv[])
@@ -171,9 +179,9 @@ int main(int argc, char *argv[])
     }
 
     std::vector<double> focals;
-    std::vector<cv::Matx13f> poses;
-    std::vector<cv::Matx13f> points;
-    std::vector<cv::Matx13f> colors;
+    std::vector<cv::Vec3f> poses;
+    std::vector<cv::Vec3f> points;
+    std::vector<cv::Vec3b> colors;
     std::tie(focals, poses, points, colors) = calibrate_cameras(images, locations, G);
     if (focals.empty() || poses.empty() || points.empty() || colors.empty())
     {
@@ -274,9 +282,9 @@ parse_camera_graph(const cv::String &path)
 
 
 std::tuple<std::vector<double>,
-           std::vector<cv::Matx13f>,
-           std::vector<cv::Matx13f>,
-           std::vector<cv::Matx13f>>
+           std::vector<cv::Vec3f>,
+           std::vector<cv::Vec3f>,
+           std::vector<cv::Vec3b>>
 calibrate_cameras(const std::vector<cv::Mat> &images,
                   const std::vector<cv::Point3d> &locations,
                   const CameraGraph &G)
@@ -403,7 +411,7 @@ calibrate_cameras(const std::vector<cv::Mat> &images,
 
     std::cout << summary.FullReport() << std::endl;
 
-    return {};
+    return extract_sfm(cameras, tracks);
 }
 
 
@@ -585,10 +593,6 @@ find_camera_tracks(
     const std::vector<std::vector<cv::KeyPoint>> &keypoints,
     const std::vector<std::vector<cv::DMatch>> &matches)
 {
-    (void)locations;
-    (void)keypoints;
-    (void)matches;
-
     // Build image graph over all matches.
     size_t N = keypoints.size();
     std::vector<std::unordered_set<size_t>> immap(N);
@@ -758,11 +762,40 @@ ImageGraph filter_graph(const ImageGraph &G)
 }
 
 
+std::tuple<std::vector<double>,
+           std::vector<cv::Vec3f>,
+           std::vector<cv::Vec3f>,
+           std::vector<cv::Vec3b>>
+extract_sfm(const std::vector<std::shared_ptr<Camera>> &cameras,
+            const std::vector<Track> &tracks)
+{
+    std::vector<double> focals;
+    std::vector<cv::Vec3f> rot;
+    std::vector<cv::Vec3f> point_cloud;
+    std::vector<cv::Vec3b> point_colors;
+    for (auto &cam : cameras)
+    {
+        focals.push_back(cam->b[3]);
+        rot.push_back(cv::Vec3f(cam->b[0], cam->b[1], cam->b[2]));
+        point_cloud.push_back(cv::Vec3f(cam->c.x, cam->c.y, cam->c.z));
+        point_colors.push_back(cv::Vec3f(0, 255, 0));
+    }
+
+    for (auto &tr : tracks)
+    {
+        point_cloud.push_back(cv::Vec3f(tr.p->b[0], tr.p->b[1], tr.p->b[2]));
+        point_colors.push_back(cv::Vec3f(0, 0, 255));
+    }
+
+    return std::make_tuple(focals, rot, point_cloud, point_colors);
+}
+
+
 
 bool
 output_camera_calibration(const cv::String &path,
                           const std::vector<double> &focals,
-                          const std::vector<cv::Matx13f> &poses)
+                          const std::vector<cv::Vec3f> &poses)
 {
     std::time_t date = time(nullptr);
     cv::FileStorage fs(path, cv::FileStorage::WRITE);
