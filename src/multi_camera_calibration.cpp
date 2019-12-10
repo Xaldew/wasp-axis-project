@@ -324,30 +324,44 @@ calibrate_cameras(const std::vector<cv::Mat> &images,
     // Search for matches in each pair of images.
     // Note: Crosscheck is intended as an alternative to the ratio test.
     std::vector<std::vector<cv::DMatch>> matches(N2);
-    cv::BFMatcher matcher(cv::NORM_HAMMING);
+    cv::BFMatcher matcher(cv::NORM_HAMMING, true);
     for (size_t i = 0, cnt = 0; i < N; ++i)
     {
         for (size_t j = 0; j < N; ++j)
         {
             if (i == j) continue;
-            std::vector<std::vector<cv::DMatch>> knn_matches;
-            matcher.knnMatch(desc[i], desc[j], knn_matches, 2);
 
-            // Filter matches using Lowe's ratio test.
-            const float nn_ration = 0.85;
-            for (size_t k = 0; k < knn_matches.size(); k++)
-            {
-                if (knn_matches[k][0].distance < nn_ration * knn_matches[k][1].distance)
-                {
-                    matches[cnt].push_back(knn_matches[k][0]);
-                }
-            }
+            //
+            auto &mdst = matches[cnt];
+
+            // Use matching with cross-checking.
+            matcher.match(desc[i], desc[j], mdst);
+
+            // // Filter matches using Lowe's ratio test.
+            // std::vector<std::vector<cv::DMatch>> knn_matches;
+            // matcher.knnMatch(desc[i], desc[j], knn_matches, 2);
+
+            // const float nn_ration = 0.8;
+            // for (size_t k = 0; k < knn_matches.size(); k++)
+            // {
+            //     if (knn_matches[k][0].distance < nn_ration * knn_matches[k][1].distance)
+            //     {
+            //         mdst.push_back(knn_matches[k][0]);
+            //     }
+            // }
 
             // Extract indices to the keypoints.
             std::vector<int> id0;
             std::vector<int> id1;
-            for (const auto &m : matches[cnt])
+
+            // Take the 30 points with the shortest distance.
+            std::sort(mdst.begin(), mdst.end());
+            size_t step = std::min<size_t>(30, mdst.size());
+            mdst.erase(mdst.begin() + step, mdst.end());
+
+            for (auto &m : mdst)
             {
+                std::cout << m.distance << std::endl;
                 id0.push_back(m.queryIdx);
                 id1.push_back(m.trainIdx);
             }
@@ -360,16 +374,16 @@ calibrate_cameras(const std::vector<cv::Mat> &images,
 
             // Estimate the fundamental matrix and use RanSaC filter out matches
             // further.
-            std::vector<uchar> mask(matches[cnt].size());
-            cv::Mat F = cv::findFundamentalMat(pt0, pt1, cv::FM_RANSAC, 3.0, 0.9999, mask);
+            std::vector<uchar> mask(mdst.size());
+            cv::Mat F = cv::findFundamentalMat(pt0, pt1, mask, cv::FM_RANSAC, 1.5, 0.9999);
 
             // Filter out the outlier matches.
             std::vector<cv::DMatch> rmatch;
-            for (size_t k = 0; k < matches[cnt].size(); ++k)
+            for (size_t k = 0; k < mdst.size(); ++k)
             {
                 if (k < mask.size() && mask[k])
                 {
-                    rmatch.push_back(matches[cnt][k]);
+                    rmatch.push_back(mdst[k]);
                 }
             }
 
@@ -377,6 +391,14 @@ calibrate_cameras(const std::vector<cv::Mat> &images,
             if (g_verbose)
             {
                 cv::Mat out;
+                cv::drawMatches(images[i], keypoints[i], images[j], keypoints[j],
+                                mdst, out,
+                                cv::Scalar::all(-1), cv::Scalar::all(-1),
+                                std::vector<char>(),
+                                cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
+                cv::imshow("DebugWindow", out);
+                cv::waitKey(0);
+
                 cv::drawMatches(images[i], keypoints[i], images[j], keypoints[j],
                                 rmatch, out,
                                 cv::Scalar::all(-1), cv::Scalar::all(-1),
@@ -386,8 +408,8 @@ calibrate_cameras(const std::vector<cv::Mat> &images,
                 cv::waitKey(0);
             }
 
-            // Replace matches[cnt] with our filtered matches.
-            matches[cnt] = rmatch;
+            // Replace mdst with our filtered matches.
+            mdst = rmatch;
             cnt++;
         }
     }
