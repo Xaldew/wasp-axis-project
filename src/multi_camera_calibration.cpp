@@ -780,7 +780,7 @@ output_camera_calibration(const cv::String &path,
     fs << "camera_focals" << "[";
     for (const auto &f : focals)
     {
-        fs << f << ",";
+        fs << f;
     }
     fs << "]";
     fs << "camera_poses" << "[";
