@@ -354,9 +354,9 @@ calibrate_cameras(const std::vector<cv::Mat> &images,
             std::vector<int> id0;
             std::vector<int> id1;
 
-            // Take the 30 points with the shortest distance.
+            // Take the 40 points with the shortest distance.
             std::sort(mdst.begin(), mdst.end());
-            size_t step = std::min<size_t>(30, mdst.size());
+            size_t step = std::min<size_t>(40, mdst.size());
             mdst.erase(mdst.begin() + step, mdst.end());
 
             for (auto &m : mdst)
@@ -397,6 +397,9 @@ calibrate_cameras(const std::vector<cv::Mat> &images,
                                 std::vector<char>(),
                                 cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
                 cv::imshow("DebugWindow", out);
+                std::stringstream ss;
+                ss << "matches_" << cnt << ".jpg";
+                cv::imwrite(ss.str(), out);
                 cv::waitKey(0);
 
                 cv::drawMatches(images[i], keypoints[i], images[j], keypoints[j],
@@ -405,6 +408,10 @@ calibrate_cameras(const std::vector<cv::Mat> &images,
                                 std::vector<char>(),
                                 cv::DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
                 cv::imshow("DebugWindow", out);
+                ss.str("");
+                ss.clear();
+                ss << "matches_F_ransac_" << cnt << ".jpg";
+                cv::imwrite(ss.str(), out);
                 cv::waitKey(0);
             }
 
