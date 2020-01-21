@@ -1,0 +1,68 @@
+#+TITLE: Project Plan
+
+
+
+* 2019-10-04
+
+
+** Project Background
+
+   Autonomous Calibration of 3D Computer Vision System Using an array (3+) of
+   cameras with only partially known properties, estimate camera intrinsic
+   parameters and use the estimated model to do 3D reconstruction of the
+   scene. Current methods for calibration include several manual steps and the
+   knowledge of optics parameters. This typically means that only fixed optics
+   cameras are used for 3D reconstruction purposes, which significantly limits
+   the uses to a company like Axis with many products that has varifocal optics
+   on our cameras. If the reliance on manual calibration could be reduced, many
+   cases where vision models are required would be easier to deploy and likely
+   be viable for much larger set of problems.
+
+
+** Research Arenas
+
+   The project relates primarily to the WASP Public Safety arena where many
+   small systems and varied cameras might be in use. An autonomous calibration
+   of these could greatly enhance vision capabilities for this arena.
+
+   
+** Project Plan
+
+   The plan for the project is to divide the participants in two teams: one
+   based in Stockholm and one based in Lund.
+
+   The Lund team will primarily focus on feature detection and matching (in
+   images) for performing bundle adjustment, with some additional work done with
+   IMU sensor data. The Stockholm team, on the other hand, will primarily work
+   on developing a multi-camera self-calibration algorithm as well as estimating
+   camera extrinsic parameters based on IMU sensors.
+
+   Initially, both teams will primarily work from synthetic data (i.e., images
+   rendered using computer graphics or similar). Later on Axis will provide at
+   least 3 cameras (of potentially different make) that can be used as a rig for
+   performing real-world testing. A different rig will be used for both the
+   Stockholm and Lund sites.
+
+   Eventually, the two sites will collaborate to integrate their various parts
+   into a single system.
+
+   The project regularly perform status updates through remote teleconferencing
+   at weekly or at least fortnightly intervals. Further, more detailed status
+   reports will be provided at the major milestone locations outlined by the
+   WASP project guidelines (2019-10-31, 2019-11-30).
+
+   The primary deliverable for the project is as described in the initial
+   project description: A video detailing the developed system and its features
+   and/or limitations and a more detailed report. Additionally, links to code
+   used for the development of the system can be provided.
+
+
+** Individual Descriptions
+
+*** Improving camera calibration using a motion model prior in bundle adjustment
+
+    Several fixed cameras observe a dynamic scene. Given a good first estimate
+    of the camera poses and of the 3D positions of feature points at different
+    timestamps, use a modified bundle adjustment to optimize the camera poses
+    and 3D positions of the feature points while simultaneously smoothing the
+    trajectories of the moving points using a motion model.
