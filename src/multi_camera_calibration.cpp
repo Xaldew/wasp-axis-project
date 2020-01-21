@@ -319,6 +319,12 @@ calibrate_cameras(const std::vector<cv::Mat> &images,
     {
         detector->detect(images[i], keypoints[i]);
         detector->compute(images[i], keypoints[i], desc[i]);
+
+        cv::Mat kpim;
+        cv::drawKeypoints(images[i], keypoints[i], kpim);
+        std::stringstream ss;
+        ss << "kps_" << i << ".jpg";
+        cv::imwrite(ss.str(), kpim);
     }
 
     // Search for matches in each pair of images.
